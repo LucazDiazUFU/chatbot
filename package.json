@@ -1,19 +1,18 @@
 {
-  "name": "barbearia-chatbot",
+  "name": "chatbot-barbearia",
   "version": "1.0.0",
-  "description": "Chatbot WhatsApp Barbearia Pedro",
-  "main": "chatbot.js",
+  "description": "Chatbot WhatsApp para Barbearia Pedro usando Evolution API",
+  "main": "index.js",
   "scripts": {
-    "start": "node chatbot.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "dependencies": {
+    "express": "^4.18.2",
     "cors": "^2.8.5",
-    "express": "^4.22.1",
-    "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "^1.34.4"
+    "axios": "^1.6.0"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
 }
