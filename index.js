@@ -133,7 +133,7 @@ app.post('/enviarFila', async (req, res) => {
   try {
     console.log('\n=== ENVIAR FILA ===');
     
-    const { numero, posicao, horario } = req.body;
+    const { numero, posicao, horario, servico_nome, tempo_minutos, tempo_anterior_minutos } = req.body;
     
     if (!numero || posicao === undefined || !horario) {
       return res.status(400).json({ 
@@ -143,7 +143,7 @@ app.post('/enviarFila', async (req, res) => {
       });
     }
     
-    console.log('📋 Dados validados:', { numero, posicao, horario });
+    console.log('📋 Dados validados:', { numero, posicao, horario, servico_nome, tempo_minutos, tempo_anterior_minutos });
     
     // Verificar conexão (com tentativa de envio mesmo se a verificação falhar)
     const conectado = await verificarConexao();
@@ -154,14 +154,37 @@ app.post('/enviarFila', async (req, res) => {
       // Se realmente não estiver conectado, o erro virá do evolutionClient
     }
     
+    // Função para formatar tempo em horas e minutos
+    function formatarTempoMinutos(minutos) {
+      if (!minutos || minutos === 0) return '0 min';
+      if (minutos < 60) return `${minutos} min`;
+      const horas = Math.floor(minutos / 60);
+      const mins = minutos % 60;
+      if (mins === 0) return `${horas}h`;
+      return `${horas}h ${mins}min`;
+    }
+    
     const horarioFormatado = formatarHorario(horario);
-    const mensagem =
-      `✅ *Você entrou na fila da barbearia!*\n\n` +
-      `📍 *Sua posição atual:* ${posicao}\n` +
-      `⏰ *Horário previsto:* ${horarioFormatado}\n\n` +
-      `Aguarde sua vez. Manteremos você informado até o momento do atendimento.`;
+    const servicoNome = servico_nome || 'Serviço';
+    const tempoServico = formatarTempoMinutos(tempo_minutos || 30);
+    const tempoEspera = tempo_anterior_minutos ? formatarTempoMinutos(tempo_anterior_minutos) : null;
+    
+    // Monta a mensagem com todas as informações
+    let mensagem = `✅ *Você entrou na fila da barbearia!*\n\n`;
+    mensagem += `📍 *Sua posição na fila:* ${posicao}º lugar\n`;
+    mensagem += `✂️ *Serviço:* ${servicoNome}\n`;
+    mensagem += `⏱️ *Tempo estimado do serviço:* ${tempoServico}\n`;
+    
+    // Adiciona tempo de espera se houver clientes anteriores
+    if (tempoEspera && tempo_anterior_minutos > 0) {
+      mensagem += `⏳ *Tempo de espera estimado:* ${tempoEspera}\n`;
+    }
+    
+    mensagem += `⏰ *Horário previsto de início:* ${horarioFormatado}\n\n`;
+    mensagem += `Aguarde sua vez. Manteremos você informado até o momento do atendimento. 😊`;
     
     console.log('📤 Enviando mensagem para:', numero);
+    console.log('💬 Mensagem:', mensagem);
     
     await enviarMensagem(numero, mensagem);
     
@@ -173,6 +196,15 @@ app.post('/enviarFila', async (req, res) => {
       message: 'Mensagem enviada com sucesso',
       numero: numero
     });
+    
+  } catch (error) {
+    console.error('❌ Erro ao processar /enviarFila:', error);
+    res.status(500).json({ 
+      success: false,
+      erro: error.response?.data?.message || error.message || 'Erro interno do servidor'
+    });
+  }
+});
     
   } catch (error) {
     console.error('❌ Erro ao processar /enviarFila:', error);
@@ -302,3 +334,4 @@ process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught Exception:', error);
   process.exit(1);
 });
+
