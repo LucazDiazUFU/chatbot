@@ -199,15 +199,6 @@ app.post('/enviarFila', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Erro ao processar /enviarFila:', error);
-    res.status(500).json({ 
-      success: false,
-      erro: error.response?.data?.message || error.message || 'Erro interno do servidor'
-    });
-  }
-});
-    
-  } catch (error) {
-    console.error('❌ Erro ao processar /enviarFila:', error);
     const errorMessage = error.response?.data?.message || error.message || 'Erro interno do servidor';
     
     // Se o erro for de conexão, retorna erro específico
@@ -334,4 +325,3 @@ process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught Exception:', error);
   process.exit(1);
 });
-
