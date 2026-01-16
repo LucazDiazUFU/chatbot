@@ -86,9 +86,24 @@ async function enviarMensagem(numero, mensagem) {
 async function verificarConexao() {
   try {
     const response = await evolutionClient.get(`/instance/connectionState/${INSTANCE_NAME}`);
-    return response.data?.state === 'open';
+    
+    // CORREÇÃO: A resposta da Evolution API vem como { instance: { state: 'open' } }
+    const state = response.data?.instance?.state || response.data?.state;
+    const conectado = state === 'open';
+    
+    console.log('🔍 Verificação de conexão:', {
+      estado: state,
+      conectado: conectado,
+      resposta_completa: JSON.stringify(response.data)
+    });
+    
+    return conectado;
   } catch (error) {
-    console.error('❌ Erro ao verificar conexão:', error.message);
+    console.error('❌ Erro ao verificar conexão:', error.response?.data || error.message);
+    // Em caso de erro, retorna false mas loga detalhes
+    if (error.response?.data) {
+      console.error('📋 Resposta do erro:', JSON.stringify(error.response.data, null, 2));
+    }
     return false;
   }
 }
@@ -130,12 +145,13 @@ app.post('/enviarFila', async (req, res) => {
     
     console.log('📋 Dados validados:', { numero, posicao, horario });
     
+    // Verificar conexão (com tentativa de envio mesmo se a verificação falhar)
     const conectado = await verificarConexao();
+    
     if (!conectado) {
-      return res.status(503).json({ 
-        success: false,
-        erro: 'WhatsApp não está conectado. Verifique a instância na Evolution API.'
-      });
+      console.warn('⚠️ WhatsApp aparenta não estar conectado, mas tentando enviar mesmo assim...');
+      // Não retornamos erro imediatamente, tentamos enviar
+      // Se realmente não estiver conectado, o erro virá do evolutionClient
     }
     
     const horarioFormatado = formatarHorario(horario);
@@ -160,9 +176,20 @@ app.post('/enviarFila', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Erro ao processar /enviarFila:', error);
+    const errorMessage = error.response?.data?.message || error.message || 'Erro interno do servidor';
+    
+    // Se o erro for de conexão, retorna erro específico
+    if (error.response?.status === 404 || errorMessage.includes('instance') || errorMessage.includes('connect')) {
+      return res.status(503).json({ 
+        success: false,
+        erro: 'WhatsApp não está conectado. Verifique a instância na Evolution API.',
+        detalhes: errorMessage
+      });
+    }
+    
     res.status(500).json({ 
       success: false,
-      erro: error.response?.data?.message || error.message || 'Erro interno do servidor'
+      erro: errorMessage
     });
   }
 });
@@ -275,4 +302,3 @@ process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught Exception:', error);
   process.exit(1);
 });
-
