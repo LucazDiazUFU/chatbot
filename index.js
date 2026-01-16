@@ -46,17 +46,37 @@ app.use((req, res, next) => {
 
 function formatarHorario(isoString) {
   try {
+    // CORREÇÃO: Extrai horas e minutos diretamente do ISO string
+    // Formato esperado: "2026-01-16T23:00:00-03:00" ou "2026-01-16T23:00:00.000Z"
+    // Isso evita problemas de conversão de timezone
+    const match = isoString.match(/T(\d{2}):(\d{2})/);
+    if (match) {
+      // Retorna HH:MM diretamente do ISO string (já está no timezone correto do Brasil)
+      return `${match[1]}:${match[2]}`;
+    }
+    
+    // Fallback: usar Date e converter para timezone do Brasil
     const data = new Date(isoString);
     if (isNaN(data.getTime())) {
       console.warn('⚠️ Data inválida recebida:', isoString);
       return isoString;
     }
-    const h = String(data.getHours()).padStart(2, '0');
-    const m = String(data.getMinutes()).padStart(2, '0');
-    return `${h}:${m}`;
+    
+    // Converter para timezone do Brasil
+    const opcoes = { 
+      timeZone: 'America/Sao_Paulo', 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false
+    };
+    const formatado = data.toLocaleString('pt-BR', opcoes);
+    return formatado; // Retorna "HH:MM"
+    
   } catch (error) {
     console.error('❌ Erro ao formatar horário:', error);
-    return isoString;
+    // Tentar extrair apenas HH:MM do string original como último recurso
+    const match = isoString.match(/(\d{2}):(\d{2})/);
+    return match ? `${match[1]}:${match[2]}` : isoString;
   }
 }
 
@@ -185,6 +205,8 @@ app.post('/enviarFila', async (req, res) => {
     
     console.log('📤 Enviando mensagem para:', numero);
     console.log('💬 Mensagem:', mensagem);
+    console.log('🕐 Horário recebido (ISO):', horario);
+    console.log('🕐 Horário formatado:', horarioFormatado);
     
     await enviarMensagem(numero, mensagem);
     
